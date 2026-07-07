@@ -1,0 +1,44 @@
+# Instant BI — .gitignore
+
+# Environment
+.env
+venv/
+.venv/
+env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+*.egg
+.pytest_cache/
+
+# Streamlit
+.streamlit/
+
+# Uploaded files
+uploads/*
+!uploads/.gitkeep
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Data
+*.db
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log

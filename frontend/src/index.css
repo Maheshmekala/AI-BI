@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+/* Bolt-Style Ink & White Theme */
+:root {
+  --color-bg: #ffffff;
+  --color-sidebar: #f8f9fb;
+  --color-text: #1a202c;
+  --color-text-secondary: #4a5568;
+  --color-text-muted: #718096;
+  --color-border: #e8ecf0;
+  --color-border-light: #e2e8f0;
+  --color-accent: #3b82f6;
+  --color-accent-dark: #1a56db;
+  --color-accent-light: #ebf4ff;
+  --color-success: #38a169;
+  --color-warning: #d69e2e;
+  --color-error: #e53e3e;
+}
+
+* {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-text-secondary);
+  margin: 0;
+}

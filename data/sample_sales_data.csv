@@ -1,0 +1,55 @@
+Date,Product,Category,Region,Sales,Quantity,Profit,Discount,Customer_Segment
+2024-01-05,Laptop,Electronics,North,1200.00,2,240.00,5,Enterprise
+2024-01-08,Desk Chair,Furniture,East,450.00,3,90.00,10,SMB
+2024-01-12,Monitor,Electronics,West,350.00,5,52.50,15,Enterprise
+2024-01-15,Notebook,Office Supplies,South,25.00,50,12.50,0,SMB
+2024-01-18,Printer,Electronics,North,280.00,1,42.00,8,Enterprise
+2024-01-22,Desk Lamp,Furniture,East,85.00,4,17.00,5,Consumer
+2024-01-25,Phone,Electronics,West,699.00,3,104.85,10,Enterprise
+2024-01-28,Tablet,Electronics,South,450.00,2,67.50,12,SMB
+2024-02-02,Server,Electronics,North,3500.00,1,700.00,3,Enterprise
+2024-02-05,Bookshelf,Furniture,East,220.00,2,33.00,12,Consumer
+2024-02-08,Mouse,Electronics,West,45.00,10,9.00,5,SMB
+2024-02-12,Keyboard,Electronics,South,75.00,8,11.25,10,Enterprise
+2024-02-15,Webcam,Electronics,North,120.00,6,18.00,15,Consumer
+2024-02-18,Speaker,Electronics,East,200.00,3,30.00,8,SMB
+2024-02-22,Hard Drive,Electronics,West,150.00,5,22.50,10,Enterprise
+2024-02-25,USB Hub,Electronics,South,35.00,12,5.25,5,Consumer
+2024-03-01,Monitor,Electronics,North,350.00,4,52.50,10,SMB
+2024-03-04,Laptop,Electronics,East,1200.00,1,240.00,5,Enterprise
+2024-03-07,Desk Chair,Furniture,West,450.00,2,90.00,10,Consumer
+2024-03-10,Notebook,Office Supplies,South,25.00,30,12.50,0,SMB
+2024-03-13,Printer,Electronics,North,280.00,2,42.00,8,Enterprise
+2024-03-16,Phone,Electronics,East,699.00,5,104.85,10,SMB
+2024-03-19,Tablet,Electronics,West,450.00,3,67.50,12,Consumer
+2024-03-22,Server,Electronics,South,3500.00,1,700.00,3,Enterprise
+2024-03-25,Bookshelf,Furniture,North,220.00,3,33.00,12,SMB
+2024-03-28,Mouse,Electronics,East,45.00,15,9.00,5,Consumer
+2024-04-01,Keyboard,Electronics,West,75.00,10,11.25,10,Enterprise
+2024-04-04,Webcam,Electronics,South,120.00,4,18.00,15,SMB
+2024-04-07,Speaker,Electronics,North,200.00,5,30.00,8,Consumer
+2024-04-10,Hard Drive,Electronics,East,150.00,8,22.50,10,Enterprise
+2024-04-13,USB Hub,Electronics,West,35.00,20,5.25,5,SMB
+2024-04-16,Laptop,Electronics,South,1200.00,1,240.00,5,Enterprise
+2024-04-19,Desk Chair,Furniture,North,450.00,4,90.00,10,Consumer
+2024-04-22,Monitor,Electronics,East,350.00,6,52.50,15,SMB
+2024-04-25,Notebook,Office Supplies,West,25.00,40,12.50,0,Consumer
+2024-04-28,Printer,Electronics,South,280.00,2,42.00,8,Enterprise
+2024-05-02,Phone,Electronics,North,699.00,4,104.85,15,Consumer
+2024-05-05,Tablet,Electronics,East,450.00,5,67.50,12,SMB
+2024-05-08,Server,Electronics,West,3500.00,1,700.00,3,Enterprise
+2024-05-11,Bookshelf,Furniture,South,220.00,1,33.00,12,Consumer
+2024-05-14,Mouse,Electronics,North,45.00,8,9.00,5,SMB
+2024-05-17,Keyboard,Electronics,East,75.00,12,11.25,10,Enterprise
+2024-05-20,Webcam,Electronics,West,120.00,3,18.00,15,Consumer
+2024-05-23,Speaker,Electronics,South,200.00,4,30.00,8,SMB
+2024-05-26,Hard Drive,Electronics,North,150.00,6,22.50,10,Enterprise
+2024-05-29,USB Hub,Electronics,East,35.00,15,5.25,5,Consumer
+2024-06-01,Laptop,Electronics,West,1200.00,2,240.00,5,SMB
+2024-06-04,Desk Chair,Furniture,South,450.00,3,90.00,10,Enterprise
+2024-06-07,Monitor,Electronics,North,350.00,5,52.50,15,Consumer
+2024-06-10,Notebook,Office Supplies,East,25.00,60,12.50,0,SMB
+2024-06-13,Printer,Electronics,West,280.00,1,42.00,8,Enterprise
+2024-06-16,Phone,Electronics,South,699.00,6,104.85,10,Consumer
+2024-06-19,Tablet,Electronics,North,450.00,4,67.50,12,SMB
+2024-06-22,Server,Electronics,East,3500.00,1,700.00,3,Enterprise
