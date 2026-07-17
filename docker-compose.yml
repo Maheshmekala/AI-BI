@@ -1,0 +1,28 @@
+version: '3.8'
+
+services:
+  # Single container running FastAPI backend + React frontend via Nginx
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instant-bi
+    ports:
+      - "8000:8000"   # FastAPI backend
+      - "3000:80"     # Nginx (React frontend)
+    environment:
+      - SERVICE=all
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+      - ./uploads:/app/uploads
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s

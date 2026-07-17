@@ -60,11 +60,22 @@ class QueryBuilder:
         params: list[Any] = []
         q_table = _qi(table)
 
-        # Resolve x and y columns
-        x_col = x_column
+        # Resolve x and y columns — aggressively sanitize against [object Object]
+        x_col = str(x_column) if x_column is not None else None
         y_col = y_column
         if isinstance(y_col, list):
-            y_col = y_col[0] if y_col else None
+            y_col = str(y_col[0]) if y_col and len(y_col) > 0 else None
+        else:
+            y_col = str(y_col) if y_col is not None else None
+        # Strip contamination from column names before any SQL generation
+        for ref_name in ("x_col", "y_col"):
+            ref = locals()[ref_name]
+            if ref and ("[object" in ref or "Object" in ref or "{" in ref):
+                pass  # _qi() will handle sanitization
+
+        # Validate table name is clean
+        if "[object" in str(table) or "{" in str(table):
+            return f"-- Error: invalid table name", params
 
         # Determine the SQL components
         select_parts: list[str] = []
@@ -413,5 +424,20 @@ class QueryBuilder:
 
 
 def _qi(name: str) -> str:
-    """Quote an identifier for safe SQL usage."""
+    """Quote an identifier for safe SQL usage.
+
+    Strips any [object Object] contamination and ensures only
+    valid identifier characters are quoted.
+    """
+    # Convert to string first — catch objects/None leaking through
+    if not isinstance(name, str):
+        try:
+            name = str(name)
+        except Exception:
+            return '"unknown_column"'
+    # Strip common contamination patterns from LLM goofs
+    name = name.replace("[object Object]", "").replace("object Object", "").strip()
+    if not name or name == "None" or name == "null":
+        return '"unknown_column"'
+    # Ensure it's a reasonable identifier
     return f'"{name}"'

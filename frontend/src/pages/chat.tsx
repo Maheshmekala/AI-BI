@@ -88,7 +88,7 @@ export function ChatPage({ dataset, chat, models }: ChatPageProps) {
               {msg.charts && msg.charts.length > 0 && (
                 <div className="mt-3 space-y-4">
                   {msg.charts.map((chart, ci) => (
-                    <ChartTabCard key={ci} chart={chart} sql={msg.sql || chart.sql || ''} index={ci} />
+                    <ChartTabCard key={ci} chart={chart} sql={typeof msg.sql === 'string' ? msg.sql : (typeof chart.sql === 'string' ? chart.sql : (chart.sql ? String(chart.sql) : ''))} index={ci} />
                   ))}
                 </div>
               )}

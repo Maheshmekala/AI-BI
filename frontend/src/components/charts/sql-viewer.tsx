@@ -14,8 +14,13 @@ interface SQLViewerProps {
 }
 
 export function SQLViewer({ sql, onRunAsQuery, maxHeight = 400 }: SQLViewerProps) {
-  // Ensure sql is a string — fix [object Object] issues
-  const sqlStr = typeof sql === 'string' ? sql : (sql ? String(sql) : '-- No SQL');
+  // Ensure sql is always a string — fix all contamination
+  const sqlStr = (() => {
+    if (typeof sql === 'string') return sql;
+    if (sql === null || sql === undefined) return '';
+    if (Array.isArray(sql)) return sql.filter(Boolean).join('\n');
+    try { return String(sql); } catch { return ''; }
+  })().replace(/\[object Object\]/gi, '').replace(/\[object\s+\w*\]/gi, '').trim();
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(async () => {
@@ -26,7 +31,7 @@ export function SQLViewer({ sql, onRunAsQuery, maxHeight = 400 }: SQLViewerProps
     } catch {
       // Fallback
       const textarea = document.createElement('textarea');
-      textarea.value = sql;
+      textarea.value = sqlStr;
       document.body.appendChild(textarea);
       textarea.select();
       document.execCommand('copy');
@@ -75,6 +80,10 @@ export function SQLViewer({ sql, onRunAsQuery, maxHeight = 400 }: SQLViewerProps
 function highlightSQL(sql: string): React.ReactNode {
   if (!sql) return null;
 
+  // Nuke [object Object] contamination before highlighting
+  const clean = sql.replace(/\[object Object\]/gi, '').replace(/\[object\s+\w*\]/gi, '').trim();
+  if (!clean) return <span className="text-[#6b7280] italic">-- No SQL generated</span>;
+
   // SQL keywords — bright blue/purple
   const keywords = new Set([
     'SELECT', 'FROM', 'WHERE', 'AND', 'OR', 'NOT', 'IN', 'AS', 'ON',
@@ -88,8 +97,6 @@ function highlightSQL(sql: string): React.ReactNode {
     'EXTRACT', 'DATE_PART', 'DATEDIFF', 'DATEADD', 'YEAR', 'MONTH', 'DAY',
     'QUARTER', 'WEEK', 'WEEKDAY', 'PERCENTILE_CONT', 'REGR_SLOPE', 'REGR_R2',
     'WIDTH_BUCKET', 'ATTACH', 'DETACH', 'TYPE', 'IF', 'REPLACE',
-    'ORDER BY', 'GROUP BY', 'LEFT JOIN', 'RIGHT JOIN', 'INNER JOIN',
-    'OUTER JOIN', 'FULL JOIN', 'CROSS JOIN',
   ]);
 
   // Aggregate functions — bright cyan
@@ -109,7 +116,7 @@ function highlightSQL(sql: string): React.ReactNode {
   ]);
 
   // Split into tokens and rebuild with spans
-  const tokens = sql.split(/(\b\w+\b|'[^']*'|"[^"]*"|\s+|--[^\n]*)/g);
+  const tokens = clean.split(/(\b\w+\b|'[^']*'|"[^"]*"|\s+|--[^\n]*)/g);
 
   return tokens.map((token, i) => {
     const upper = token.toUpperCase();

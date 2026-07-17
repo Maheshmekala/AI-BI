@@ -33,7 +33,6 @@ Instant BI bridges the gap between raw data and business decisions:
 - **📝 Chart + SQL Viewer** — Every chart shows the exact DuckDB query that generated it
 - **🧮 Calculated Fields** — User-defined SQL expressions (e.g. `profit = revenue - cost`)
 - **🔍 Drill-Down Hierarchies** — Auto-detect date/geo/categorical hierarchies with SQL GROUP BY
-- **🏗️ Dual Architecture** — Streamlit SPA for quick interaction + Vite/React dashboard for rich UI + FastAPI backend for programmatic access
 
 ---
 
@@ -51,77 +50,72 @@ User Action (click, filter, drag, type)
 
 ```
 instant-bi/
-├── app.py                     # Streamlit frontend (main entry point)
-├── style.css                  # Custom CSS for Streamlit UI
+├── sql_engine/                  # DuckDB SQL engine
+│   ├── __init__.py              #   Connection manager, ingest, metadata
+│   ├── query_builder.py         #   SQL generation from chart/filter specs
+│   ├── shelf_to_sql.py          #   Drag-drop shelf → SQL converter
+│   └── calculated_fields.py     #   SQL expression validation & views
 │
-├── sql_engine/                # ★ NEW: DuckDB SQL engine
-│   ├── __init__.py            #   Connection manager, ingest, metadata
-│   ├── query_builder.py       #   SQL generation from chart/filter specs
-│   ├── shelf_to_sql.py        #   Drag-drop shelf → SQL converter
-│   └── calculated_fields.py   #   SQL expression validation & views
+├── rag/                         # RAG pipeline for NL→SQL
+│   ├── schema_index.py          #   Index table schemas for retrieval
+│   ├── embedder.py              #   Text embeddings
+│   ├── retriever.py             #   Retrieve schema + few-shot examples
+│   ├── llm_sql.py               #   Build prompt, call LLM, get SQL
+│   ├── semantic_cache.py        #   Cache question→SQL pairs
+│   ├── few_shot_store.py        #   Store successful Q→SQL examples
+│   └── router.py                #   Intent classification
 │
-├── rag/                       # ★ NEW: RAG pipeline for NL→SQL
-│   ├── schema_index.py        #   Index table schemas for retrieval
-│   ├── embedder.py            #   Text embeddings
-│   ├── retriever.py           #   Retrieve schema + few-shot examples
-│   ├── llm_sql.py             #   Build prompt, call LLM, get SQL
-│   ├── semantic_cache.py      #   Cache question→SQL pairs
-│   ├── few_shot_store.py      #   Store successful Q→SQL examples
-│   └── router.py              #   Intent classification
+├── data_sources/                # Data loading layer (DuckDB-backed)
+│   ├── base.py                  #   Dataset with SQL table ref (no DataFrame)
+│   ├── file_sources.py          #   CSV/Excel/PDF → DuckDB tables
+│   └── sql_sources.py           #   DuckDB ATTACH for PostgreSQL/MySQL/SQLite
 │
-├── data_sources/              # Data loading layer (DuckDB-backed)
-│   ├── base.py                #   Dataset with SQL table ref (no DataFrame)
-│   ├── file_sources.py        #   CSV/Excel/PDF → DuckDB tables
-│   └── sql_sources.py         #   DuckDB ATTACH for PostgreSQL/MySQL/SQLite
-│
-├── insights/                  # ★ Rewritten: SQL-powered stats engine
-│   └── __init__.py            #   CORR(), PERCENTILE_CONT(), REGR_SLOPE() via SQL
+├── insights/                    # SQL-powered stats engine
+│   └── __init__.py              #   CORR(), PERCENTILE_CONT(), REGR_SLOPE() via SQL
 │
 ├── visualization/               # Chart & dashboard rendering
 │   ├── __init__.py              #   SQL-powered Plotly rendering (17 chart types)
-│   ├── advanced_charts.py       #   Waterfall, Treemap, Gauge, Sankey, etc.
-│   └── renderers.py             #   Streamlit bridges with SQL viewer
+│   └── advanced_charts.py       #   Waterfall, Treemap, Gauge, Sankey, etc.
 │
-├── mcp_charts.py                # ★ MCP Chart Bridge — 8 open-source color themes
+├── mcp_charts.py                # MCP Chart Bridge — 8 open-source color themes
 │
-├── llm/                         # ★ Multi-Agent LLM provider abstraction
-│   ├── __init__.py               #   10+ providers: OpenAI, Anthropic, Groq, Google, Ollama...
-│   └── task_router.py            #   Task-based routing: SQL→fast model, insights→capable model
+├── llm/                         # Multi-Agent LLM provider abstraction
+│   ├── __init__.py              #   10+ providers: OpenAI, Anthropic, Groq, Google, Ollama...
+│   └── task_router.py           #   Task-based routing: SQL→fast model, insights→capable model
 │
 ├── query_engine/                # Natural language → SQL translation
 │   └── engine.py                #   LLM generates SQL via RAG (schema + 10 rows only)
 │
-├── config/                    # Centralized configuration
-├── ui/                        # Streamlit UI components
-├── utils/                     # Shared utilities
+├── config/                      # Centralized configuration
+├── utils/                       # Shared utilities
 │
-├── backend/                   # FastAPI REST API
-│   ├── main.py                #   API entry point with all routers
-│   ├── state.py               #   DuckDB-backed state management
-│   ├── schemas.py             #   40+ Pydantic models
+├── backend/                     # FastAPI REST API
+│   ├── main.py                  #   API entry point with all routers
+│   ├── state.py                 #   DuckDB-backed state management
+│   ├── schemas.py               #   40+ Pydantic models
 │   ├── routers/
-│   │   ├── datasets.py        #   CRUD + chart-data + hierarchies endpoints
-│   │   ├── query.py           #   NL query → SQL → chart with streaming
-│   │   ├── insights.py        #   SQL-powered analysis endpoints
-│   │   ├── sources.py         #   File upload + DB connect
-│   │   ├── rag.py             #   RAG query endpoint
-│   │   ├── calculations.py    #   Calculated fields CRUD
-│   │   ├── models.py          #   LLM model listing
-│   │   └── settings.py        #   App settings
-│   ├── calculations/          #   Calculated field engine
-│   ├── hierarchies/           #   Hierarchy detector
-│   ├── blending/              #   Data blending engine (JOIN/UNION)
-│   └── stories/               #   Storyboarding engine
+│   │   ├── datasets.py          #   CRUD + chart-data + hierarchies endpoints
+│   │   ├── query.py             #   NL query → SQL → chart with streaming
+│   │   ├── insights.py          #   SQL-powered analysis endpoints
+│   │   ├── sources.py           #   File upload + DB connect
+│   │   ├── rag.py               #   RAG query endpoint
+│   │   ├── calculations.py      #   Calculated fields CRUD
+│   │   ├── models.py            #   LLM model listing
+│   │   └── settings.py          #   App settings
+│   ├── calculations/            #   Calculated field engine
+│   ├── hierarchies/             #   Hierarchy detector
+│   ├── blending/                #   Data blending engine (JOIN/UNION)
+│   └── stories/                 #   Storyboarding engine
 │
-├── frontend/                  # Vite + React + TypeScript dashboard
+├── frontend/                    # Vite + React + TypeScript dashboard
 │   ├── src/
-│   │   ├── App.tsx            #   App shell with routing + DashboardProvider
+│   │   ├── App.tsx              #   App shell with routing + DashboardProvider
 │   │   ├── context/
-│   │   │   └── dashboard-context.tsx  # ★ Cross-filter, params, drill state
+│   │   │   └── dashboard-context.tsx  # Cross-filter, params, drill state
 │   │   ├── components/charts/
-│   │   │   ├── chart-with-sql.tsx     # ★ Tabbed [Chart] + [SQL] viewer
-│   │   │   ├── sql-viewer.tsx         # ★ Syntax-highlighted SQL display
-│   │   │   ├── interactive-chart-renderer.tsx # ★ Plotly with selection events
+│   │   │   ├── chart-with-sql.tsx     # Tabbed [Chart] + [SQL] viewer
+│   │   │   ├── sql-viewer.tsx         # Syntax-highlighted SQL display
+│   │   │   ├── interactive-chart-renderer.tsx # Plotly with selection events
 │   │   │   └── chart-renderer.tsx     #   Base Plotly rendering
 │   │   ├── hooks/
 │   │   │   ├── use-chart-sql.ts       #   Track SQL alongside chart data
@@ -138,12 +132,12 @@ instant-bi/
 │   ├── package.json
 │   └── vite.config.ts
 │
-├── uploads/                   # Uploaded file storage
-├── data/                      # Sample data
+├── uploads/                     # Uploaded file storage
+├── data/                        # Sample data
 │   └── sample_sales_data.csv
-├── requirements.txt           # Python dependencies (stripped down)
-├── .env.example               # Environment variable template
-└── setup.bat                  # One-click setup script
+├── requirements.txt             # Python dependencies
+├── .env.example                 # Environment variable template
+└── DOCKER.md                    # Docker deployment guide
 ```
 
 ---
@@ -235,7 +229,7 @@ Define new columns using SQL expressions:
 
 ### Prerequisites
 - **Python 3.10+**
-- **Node.js 18+** — for the React frontend (optional, Streamlit works standalone)
+- **Node.js 18+**
 - **pip** / **npm**
 
 ### 1. Setup
@@ -270,12 +264,6 @@ ANTHROPIC_API_KEY=sk-ant-your-anthropic-key
 
 ### 3. Run the Application
 
-#### Option A — Streamlit App (standalone, quick use)
-```cmd
-streamlit run app.py --server.port 8501
-```
-
-#### Option B — Full Stack (FastAPI + React Dashboard)
 ```bash
 # Terminal 1: FastAPI backend
 uvicorn backend.main:app --reload --port 8000
@@ -289,7 +277,6 @@ npm run dev
 ### Access Points
 | Service | URL |
 |---------|-----|
-| **Streamlit App** | http://localhost:8501 |
 | **React Dashboard** | http://localhost:3000 |
 | **FastAPI (API)** | http://localhost:8000 |
 | **API Docs (Swagger)** | http://localhost:8000/docs |
@@ -317,7 +304,6 @@ npm run dev
 | Layer | Technology |
 |-------|-----------|
 | **SQL Engine** | DuckDB — embedded OLAP, columnar, zero-config |
-| **Frontend (SPA)** | Streamlit, Plotly, custom CSS |
 | **Frontend (Dashboard)** | React 19, TypeScript, Vite 8, Tailwind CSS v4, Plotly.js, Recharts |
 | **Backend API** | FastAPI, Uvicorn |
 | **LLM Integration** | Multi-Agent Router: OpenAI, Anthropic, Google Gemini, Groq, Ollama, DeepSeek, xAI, Together, OpenRouter, LiteLLM |
@@ -380,7 +366,6 @@ All configuration is managed through environment variables (see [.env.example](.
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_DEFAULT_MODEL` | `llama3.1` | Default Ollama model |
 | `APP_NAME` | `Instant BI` | Application display name |
-| `APP_THEME` | `light` | UI theme |
 | `MAX_UPLOAD_SIZE_MB` | `200` | Max file upload size |
 | `CACHE_TTL_SECONDS` | `3600` | Cache expiry |
 
@@ -422,4 +407,4 @@ MIT License — Free for personal and commercial use.
 
 ---
 
-*Version: 3.1.0 | Last Updated: June 29, 2026*
+*Version: 3.1.1 | Last Updated: July 16, 2026*

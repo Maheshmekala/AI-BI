@@ -60,14 +60,78 @@ def render_chart(
         Tuple of (Plotly Figure, SQL query that generated the data).
     """
     chart_type = chart.chart_type.lower()
+
+    # ── Column name resolution ──────────────────────────────────────
+    # Build a lookup from dataset column names (lowercased -> original)
+    # so the LLM's "city" matches the real column "City".
+    actual_cols = {c["name"].lower(): c["name"] for c in dataset.columns_info}
+
+    def _resolve_col(llm_col: str) -> str | None:
+        """Resolve an LLM-provided column name to the actual dataset column
+        via case-insensitive matching."""
+        if not llm_col:
+            return None
+        key = llm_col.lower().replace("_", " ").replace("-", " ").strip()
+        # Exact-ish match first
+        if llm_col in actual_cols.values():
+            return llm_col
+        if key in actual_cols:
+            return actual_cols[key]
+        # Try stripping common LLM artifacts
+        for real_name in actual_cols.values():
+            rn_lower = real_name.lower()
+            if rn_lower == key or rn_lower.replace(" ", "_") == key.replace(" ", "_") or rn_lower.replace("_", " ") == key:
+                return real_name
+        return None
+
+    # Sanitize all column names — strip [object Object] contamination
+    def _clean_col(val: Any, default: str = "") -> str:
+        if val is None:
+            return default
+        # y_column can be a list[str]
+        if isinstance(val, list):
+            return _clean_col(val[0], default) if val else default
+        s = str(val).replace("[object Object]", "").replace("object Object", "").strip()
+        return s or default
+
+    raw_x = _clean_col(chart.x_column)
+    raw_y = _clean_col(chart.y_column, "" if chart.chart_type == "pie" else "")
+    raw_color = _clean_col(chart.color_column)
+
+    # Resolve to actual dataset column names
+    safe_x = _resolve_col(raw_x)
+    safe_y = _resolve_col(raw_y)
+    safe_color = _resolve_col(raw_color)
+
+    # Check for contamination / unresolvable columns
+    check_str = raw_x + raw_y + str(chart.color_column or "")
+    if "[object" in check_str or "{" in check_str:
+        fig = go.Figure()
+        fig.add_annotation(
+            text="Chart error: contaminated column names from LLM",
+            showarrow=False, font=dict(color="#e53e3e", size=12),
+        )
+        fig.update_layout(height=height, width=width, template="plotly_white",
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig, f"-- Error: contaminated column names from LLM"
+
+    if not safe_x and not safe_y:
+        # No usable columns — skip chart silently
+        fig = go.Figure()
+        fig.add_annotation(text="Could not determine chart columns from your question. Try rephrasing.", showarrow=False)
+        fig.update_layout(height=height, width=width, template="plotly_white",
+                          paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)")
+        return fig, "-- No usable columns"
+
+    # Build SQL using the resolved (correct-cased) column names
     qb = QueryBuilder()
     sql, params = qb.build_chart_sql(
         table=dataset.table_name,
         chart_type=chart_type,
-        x_column=chart.x_column,
-        y_column=chart.y_column,
+        x_column=safe_x,
+        y_column=safe_y,
         aggregation=chart.aggregation,
-        color_column=chart.color_column,
+        color_column=safe_color,
         filters=filters or [],
         limit=5000,
     )
@@ -87,9 +151,9 @@ def render_chart(
         return fig, sql
 
     # Map columns to Plotly inputs
-    x_col = "_x" if "_x" in df.columns else (chart.x_column if chart.x_column in df.columns else None)
-    y_col = "_y" if "_y" in df.columns else (chart.y_column if isinstance(chart.y_column, str) and chart.y_column in df.columns else None)
-    color_col = "_color" if "_color" in df.columns else (chart.color_column if chart.color_column in df.columns else None)
+    x_col = "_x" if "_x" in df.columns else (safe_x if safe_x in df.columns else None)
+    y_col = "_y" if "_y" in df.columns else (safe_y if safe_y in df.columns else None)
+    color_col = "_color" if "_color" in df.columns else (safe_color if safe_color and safe_color in df.columns else None)
 
     fig = None
 

@@ -20,6 +20,9 @@ build/
 # Streamlit
 .streamlit/
 
+# Node
+node_modules/
+
 # Uploaded files
 uploads/*
 !uploads/.gitkeep

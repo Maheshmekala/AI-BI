@@ -96,9 +96,36 @@ class QueryEngine:
         """Extract chart recommendations from LLM response text."""
         charts = []
 
-        # Find code blocks and parse JSON with brace-depth counting
-        json_pattern = r"```(?:json)?\s*\n?(.*?)\n?```"
-        matches = re.findall(json_pattern, text, re.DOTALL)
+        def _sanitize(val: Any) -> str:
+            """Sanitize a column name value — must be a plain string, no objects."""
+            if val is None:
+                return ""
+            if isinstance(val, str):
+                val = val.strip()
+                # Clean contamination patterns
+                val = val.replace("[object Object]", "").replace("object Object", "").strip()
+                return val
+            if isinstance(val, list):
+                if len(val) > 0:
+                    return _sanitize(val[0])
+                return ""
+            if isinstance(val, dict):
+                # Object found — this is the [object Object] root cause
+                # Try to extract a useful column name from common keys
+                for k in ("column", "name", "field", "x", "y", "value"):
+                    if k in val and isinstance(val[k], str):
+                        return _sanitize(val[k])
+                return ""
+            try:
+                s = str(val).replace("[object Object]", "").strip()
+                return s
+            except Exception:
+                return ""
+
+        # Strategy 1: Find code blocks and parse JSON with brace-depth counting
+        # Handle case-insensitive and various code block markers
+        json_pattern = r"```(?:json|jsonc|javascript|js|python)?\s*\n?(.*?)\n?```"
+        matches = re.findall(json_pattern, text, re.DOTALL | re.IGNORECASE)
         for match in matches:
             content = match.strip()
             for start_marker, end_marker in [("{", "}"), ("[", "]")]:
@@ -123,22 +150,37 @@ class QueryEngine:
                 items = [data] if isinstance(data, dict) else data
                 for item in items:
                     if isinstance(item, dict) and "chart_type" in item:
-                        # Normalize y_column — if it's a list, take the first element
-                        raw_y = item.get("y_column") or item.get("y") or ""
-                        if isinstance(raw_y, list):
-                            raw_y = raw_y[0] if len(raw_y) > 0 else ""
-                        elif not isinstance(raw_y, str):
-                            raw_y = str(raw_y) if raw_y else ""
                         charts.append(ChartRecommendation(
-                            chart_type=item["chart_type"],
-                            title=item.get("title") or "",
-                            x_column=item.get("x_column") or item.get("x") or "",
-                            y_column=raw_y,
-                            aggregation=item.get("aggregation") or "none",
-                            color_column=item.get("color_column"),
-                            description=item.get("description") or item.get("desc") or "",
+                            chart_type=_sanitize(item["chart_type"]),
+                            title=_sanitize(item.get("title") or item.get("desc") or ""),
+                            x_column=_sanitize(item.get("x_column") or item.get("x") or ""),
+                            y_column=_sanitize(item.get("y_column") or item.get("y") or ""),
+                            aggregation=_sanitize(item.get("aggregation") or "none"),
+                            color_column=_sanitize(item.get("color_column")),
+                            description=_sanitize(item.get("description") or item.get("desc") or ""),
                         ))
                 break
+
+        # Strategy 2: If no charts found from code blocks, try finding JSON inline
+        if not charts:
+            # Look for JSON objects containing "chart_type" anywhere in the text
+            inline_json_pattern = r'\{[^{}]*"chart_type"[^{}]*\}'
+            inline_matches = re.findall(inline_json_pattern, text, re.DOTALL)
+            for match_data in inline_matches:
+                try:
+                    data = json.loads(match_data)
+                    if isinstance(data, dict) and "chart_type" in data:
+                        charts.append(ChartRecommendation(
+                            chart_type=_sanitize(data["chart_type"]),
+                            title=_sanitize(data.get("title") or ""),
+                            x_column=_sanitize(data.get("x_column") or data.get("x") or ""),
+                            y_column=_sanitize(data.get("y_column") or data.get("y") or ""),
+                            aggregation=_sanitize(data.get("aggregation") or "none"),
+                            color_column=_sanitize(data.get("color_column")),
+                            description=_sanitize(data.get("description") or data.get("desc") or ""),
+                        ))
+                except (json.JSONDecodeError, KeyError):
+                    pass
 
         # Fallback: parse structured chart hints in text
         chart_hints = re.findall(
@@ -148,22 +190,43 @@ class QueryEngine:
         for hint in chart_hints:
             charts.append(ChartRecommendation(
                 chart_type="bar" if hint[0].lower() in ("bar", "column") else "line" if "line" in hint[0].lower() else "bar",
-                title=hint[0].strip(),
-                x_column=hint[1].strip(),
-                y_column=hint[2].strip(),
+                title=_sanitize(hint[0].strip()),
+                x_column=_sanitize(hint[1].strip()),
+                y_column=_sanitize(hint[2].strip()),
             ))
 
-        return charts
+        # Final filter: remove any chart with contaminated or empty column names
+        valid_charts = []
+        for c in charts:
+            if c.chart_type and _sanitize(c.x_column) and _sanitize(c.y_column):
+                # Check for contamination in the already-set values
+                ok = True
+                for field in [c.x_column, c.y_column, c.color_column or "", c.title, c.description]:
+                    s = str(field)
+                    if "object Object" in s or "[object" in s or "{" in s:
+                        ok = False
+                        break
+                if ok:
+                    valid_charts.append(c)
+        return valid_charts
 
     def _clean_answer(self, text: str) -> str:
         """Strip SQL and JSON code blocks from the answer text — keep only explanations."""
         import re
-        # Remove ```sql ... ``` blocks
-        text = re.sub(r'```sql\s*\n.*?```', '', text, flags=re.DOTALL)
-        # Remove ```json ... ``` blocks
-        text = re.sub(r'```json\s*\n.*?```', '', text, flags=re.DOTALL)
+        # Remove SQL code blocks first: ```sql ... ```
+        text = re.sub(r'```sql\s*\n.*?```', '', text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove JSON code blocks: ```json ... ```
+        text = re.sub(r'```json\s*\n.*?```', '', text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove JSON inline code blocks: ```jsonc, ```javascript, ```js
+        text = re.sub(r'```(?:jsonc|javascript|js)\s*\n.*?```', '', text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove empty ```...``` that remain
+        text = re.sub(r'```\s*\n.*?```', '', text, flags=re.DOTALL | re.IGNORECASE)
+        # Remove any leftover standalone triple backticks
+        text = re.sub(r'```\w*', '', text)
         # Clean up excessive blank lines left behind
         text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+        # Remove any [object Object] text leaked from LLM
+        text = text.replace("[object Object]", "").replace("object Object", "")
         return text.strip()
 
     def _execute_pandas(self, code: str, df: pd.DataFrame) -> str:
